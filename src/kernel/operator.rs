@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use crate::kernel::HoTTerm;
 
-use super::{HoTType, Pair};
+/*use super::{HoTType, Pair};
 pub enum Operator {
     Fst,
     Snd
@@ -39,4 +39,4 @@ pub fn apply_operator(op_kind : Operator, parameter : Vec<Rc<HoTTerm>>)
         Operator::Fst => operate_fst(op_kind, parameter),
         Operator::Snd => operate_snd(op_kind, parameter)
     }
-}
+}*/

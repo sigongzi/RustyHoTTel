@@ -1,10 +1,10 @@
-pub mod term;
+pub mod hotterm;
 pub mod hottype;
+pub mod inductive;
+pub mod constructor;
+pub mod operator;
 
-pub use term::HoTTerm;
+pub use hotterm::HoTTerm;
 pub use hottype::HoTType;
 
-pub use hottype::constructor::*;
-pub use term::constructor::*;
-pub use hottype::check_type;
-pub use hottype::operator::*;
+pub use constructor::*;

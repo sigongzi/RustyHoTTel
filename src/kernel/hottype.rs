@@ -1,65 +1,70 @@
-pub mod operator;
+
 use std::rc::Rc;
+
+use super::HoTTerm;
+
+// Term and Type are two graphs. And they refer to each other
+// Type don't remember who is its term. But Term should remember its map
+// We use term to construct expression: (in fact only application, in lambda calculus)
+// Their correctness must be check by other function
 #[derive(Clone)]
 pub enum HoTType {
+    // Anonymous type only has a name
     TyAnonymous(String),
-    TyPair(Pair)
+    // Pair type has two argument A x B
+    TyPair(Box<HoTType>, Box<HoTType>),
+    // Sum type has two argument A + B
+    TySum(Sum),
+    // Sigma type has two argument, one is a base(it is a term) and the other is a type family
+    TySigma(Box<Rc<HoTTerm>>, Box<HoTType>),
+    // Identity is dependent on two terms. They must be in a same type
+    TyIdentity(Box<Rc<HoTTerm>>, Box<Rc<HoTTerm>>),
+    // Pi type has two argument
+    TyPi(Box<HoTType>, Box<HoTType>),
+    // function has its name, and we think the argument is an stack, the last is a target 
+    TyFunc(String, Vec<Box<HoTType>>, Box<HoTType>),
+    // the last must be a universe
+    TyTypeFamily(String, Vec<Box<HoTType>>, Box<HoTType>),
+    // similar as func
+    TyLambda(Vec<Box<HoTType>>, Box<HoTType>),
+    TyUniverse,
+    // TODO: How to use a Natural?
+    TyNat
 }
 
 #[derive(Clone)]
-pub struct Pair {
-    fst : Rc<HoTType>,
-    snd : Rc<HoTType>
+pub struct Sum {
+    pub inl : Box<HoTType>,
+    pub inr : Box<HoTType>
+}
+struct Sigma {
+    base : String,
+
 }
 
-impl Pair {
-    pub fn get_first(&self) -> Rc<HoTType> {
-        self.fst.clone()
-    }
-    pub fn get_second(&self) -> Rc<HoTType> {
-        self.snd.clone()
-    }
-}
+pub fn check_type(type1 : &HoTType, type2 : &HoTType) -> bool {
 
-// check the type recursively
-pub fn check_type(type1 : Rc<HoTType>, type2 : Rc<HoTType>) -> bool {
-
-    match (type1.as_ref(), type2.as_ref()) {
+    match (type1, type2) {
         (HoTType::TyAnonymous(s0),
         HoTType::TyAnonymous(s1)) => {
             s0 == s1
         },
-        (HoTType::TyPair(p0), HoTType::TyPair(p1)) => {
-            check_type(p0.fst.clone(), p1.fst.clone()) &&
-            check_type(p0.snd.clone(), p1.snd.clone())
+        (HoTType::TySum(p0), HoTType::TySum(p1)) => {
+            check_type(p0.inl.as_ref(), p1.inl.as_ref()) &&
+            check_type(p0.inr.as_ref(), p1.inr.as_ref())
         }
         (_,_) => false
     }
 }
 
-pub mod constructor {
-    use super::*;
-    use std::rc::Rc;
-    pub enum TyConstructor {
-        Pair
+
+
+impl HoTType {
+    pub fn mk_anonymous(name : &str) ->  HoTType {
+        HoTType::TyAnonymous(name.to_string())
     }
-    fn construct_pair(parameter : Vec<Rc<HoTType>>) -> Result<Rc<HoTType>, String> {
-        if parameter.len() != 2 {
-            return Err("too many parameter".to_string());
-        }
-        Ok(
-            Rc::new(
-                HoTType::TyPair(Pair {
-                    fst : Rc::clone(&parameter[0]),
-                    snd : Rc::clone(&parameter[1])
-                })
-            )
-        )
+
+    pub fn mk_sum(inl : &HoTType, inr : &HoTType) -> HoTType {
+        HoTType::TySum(Sum { inl: Box::new(inl.clone()), inr: Box::new(inr.clone()) })
     }
-    pub fn construct_type(type_kind : TyConstructor, parameter : Vec<Rc<HoTType>>) 
-        -> Result<Rc<HoTType>, String> {
-        match type_kind {
-            TyConstructor::Pair => construct_pair(parameter),
-        }        
-    } 
 }
