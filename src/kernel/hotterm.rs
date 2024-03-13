@@ -11,6 +11,7 @@ expression and check
 
 // TODO: A term should record where it comes from
 // A term is unchangable after construction
+#[derive(Debug)]
 pub struct HoTTerm {
     name : String,
     hottype: HoTType

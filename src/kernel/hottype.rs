@@ -7,7 +7,7 @@ use super::HoTTerm;
 // Type don't remember who is its term. But Term should remember its map
 // We use term to construct expression: (in fact only application, in lambda calculus)
 // Their correctness must be check by other function
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum HoTType {
     // Anonymous type only has a name
     TyAnonymous(String),
@@ -32,11 +32,13 @@ pub enum HoTType {
     TyNat
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Sum {
     pub inl : Box<HoTType>,
     pub inr : Box<HoTType>
 }
+
+
 struct Sigma {
     base : String,
 
@@ -52,6 +54,11 @@ pub fn check_type(type1 : &HoTType, type2 : &HoTType) -> bool {
         (HoTType::TySum(p0), HoTType::TySum(p1)) => {
             check_type(p0.inl.as_ref(), p1.inl.as_ref()) &&
             check_type(p0.inr.as_ref(), p1.inr.as_ref())
+        },
+        (HoTType::TyPair(pa, pb), 
+        HoTType::TyPair(qa, qb)) => {
+            check_type(&pa, &qa) &&
+            check_type(&pb, &qb)
         }
         (_,_) => false
     }
@@ -66,5 +73,9 @@ impl HoTType {
 
     pub fn mk_sum(inl : &HoTType, inr : &HoTType) -> HoTType {
         HoTType::TySum(Sum { inl: Box::new(inl.clone()), inr: Box::new(inr.clone()) })
+    }
+
+    pub fn mk_pair(left : &HoTType, right : &HoTType) -> HoTType {
+        HoTType::TyPair(Box::new(left.clone()), Box::new(right.clone()))
     }
 }

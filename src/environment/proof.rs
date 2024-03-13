@@ -3,7 +3,7 @@ use std::rc::Rc;
 use std::collections::{HashMap, HashSet};
 
 use crate::kernel::inductive::{inductive_comprehensiveness, Tag};
-use crate::kernel::{hottype, is_able_to_construct_type, HoTTerm, HoTType};
+use crate::kernel::{self, hottype, is_able_to_construct_type, HoTTerm, HoTType, Operator};
 
 use super::context::{self, Context};
 
@@ -23,7 +23,12 @@ pub struct Proof {
     is_end : bool
 
 }
-
+// some debug function 
+impl Proof {
+    fn target_type(&self) -> HoTType{
+        self.assumption_list.last().unwrap().clone()
+    }
+}
 
 // Some helper function
 impl Proof {
@@ -199,6 +204,7 @@ impl Proof {
         match term {
             Some(t) => {
                 let ty = t.get_type();
+                println!("compare type {:?}, target type: {:?}", ty, self.target_type());
                 if hottype::check_type(ty, self.assumption_list.last().unwrap()) {
                     Ok(self)
                 } else {
@@ -244,37 +250,20 @@ impl Proof {
         }
         Ok(self)
     }
-    /* 
-    pub fn construct_type(&mut self, construct_type : TyConstructor , 
-        parameter : Vec<&str>, target_type_name : &str) -> Result<&mut Proof, String> {
-        let ty_rc = kernel::construct_type(construct_type, 
-            parameter
-            .iter()
-            .map(|&s| 
-                Rc::clone(self.type_collection.get(s).unwrap())
-            )
-            .collect()
-        )?;
-        self.type_collection.insert(target_type_name.to_string(), ty_rc);
+
+    pub fn operate(&mut self, op_kind : Operator, parameter : Vec<&str>, target_name : &str) ->
+        Result<&mut Proof, String> {
+        let term_list = parameter.iter()
+        .map(|&s| 
+            self.search_term_helper(s)
+        )
+        .collect::<Result<Vec<_>,_>>()?;
+        let res_type = kernel::apply_operator(op_kind, term_list)?;
+
+        // I must copy the name here... It is troubling
+        let temp = self.active_context.clone();
+        self.context_add_new_term_wrapper(temp.as_ref(), target_name, &res_type)?;
+
         Ok(self)
     }
-
-    // use the operator to process the term 
-    pub fn operate_term(&mut self, op_kind : Operator, parameter : Vec<&str>, target_name : &str) ->
-        Result<&mut Proof, String> {
-        let ty = kernel::apply_operator(
-            op_kind, 
-            parameter.iter()
-            .map(
-                |&s| 
-                Rc::clone(self.term_collection.get(s).unwrap())
-            )
-            .collect()
-        )?;
-        self.term_collection.insert(target_name.to_string(), 
-            Rc::new(
-                HoTTerm::new(target_name, ty)
-            ));
-        Ok(self)
-    }*/
 }

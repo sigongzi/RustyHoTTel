@@ -8,3 +8,4 @@ pub use hotterm::HoTTerm;
 pub use hottype::HoTType;
 
 pub use constructor::*;
+pub use operator::*;
