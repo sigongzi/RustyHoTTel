@@ -1,11 +1,12 @@
 use std::rc::Rc;
 
-use crate::kernel::{HoTTerm, HoTType};
+use crate::kernel::{hottype::check_type, HoTTerm, HoTType};
 
 #[derive(Clone, Copy)]
 pub enum Operator {
     Fst,
-    Snd
+    Snd,
+    Apply
 }
 
 
@@ -35,10 +36,34 @@ fn operate_snd(parameter : Vec<Rc<HoTTerm>>)
     }
 }
 
+fn do_apply(parameter : Vec<Rc<HoTTerm>>) -> Result<HoTType, String>{
+    let f = &parameter[0];
+    match f.get_type() {
+        HoTType::TyFunc(_) => (),
+        _ => {return Err("can not apply using something not funclike".to_string());}
+    };
+    if let HoTType::TyFunc(mut func) = f.get_type().clone() {
+        for i in 1..parameter.len() {
+            if !check_type(func.parameter.last().unwrap(), parameter[i].get_type()) {
+                return 
+                Err(format!("error in apply parameter {}, type does not match", parameter[i].get_name()));
+            }
+            func.parameter.pop();
+        }
+        let ty = match func.parameter.len() {
+            0 => func.target.as_ref().clone(),
+            _ => HoTType::TyFunc(func)
+        };
+        return Ok(ty);
+    }
+    unreachable!();
+}
+
 pub fn apply_operator(op_kind : Operator, parameter : Vec<Rc<HoTTerm>>) 
     -> Result<HoTType, String> {
     match op_kind {
         Operator::Fst => operate_fst(parameter),
-        Operator::Snd => operate_snd(parameter)
+        Operator::Snd => operate_snd(parameter),
+        Operator::Apply => do_apply(parameter)
     }
 }

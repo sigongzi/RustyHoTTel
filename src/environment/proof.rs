@@ -20,13 +20,14 @@ pub struct Proof {
 
     // other proof may use this list
     assumption_list : Vec<HoTType>,
+    target : Option<HoTType>,
     is_end : bool
 
 }
 // some debug function 
 impl Proof {
     fn target_type(&self) -> HoTType{
-        self.assumption_list.last().unwrap().clone()
+        self.target.as_ref().unwrap().clone()
     }
 }
 
@@ -104,7 +105,9 @@ impl Proof {
             active_context : None,
             term_set : HashMap::new(),
             assumption_list : Vec::new(),
+            target : None,
             is_end : false
+            
         }
     }
 
@@ -125,10 +128,32 @@ impl Proof {
         
         // the last one in the list is a target
         self.assumption_list.push(ty.clone());
+        self.target = Some(ty.clone());
         self.is_end = true;
         self
     }
 
+    pub fn introduce(&mut self, term_name : &str) -> Result<&mut Proof, String> {
+        let ty = self.target.as_ref().unwrap().clone();
+        match ty {
+            HoTType::TyFunc(mut func) => {
+                // I must copy the name here... It is troubling
+                let temp = self.active_context.clone();
+                self.context_add_new_term_wrapper(temp.as_ref(), term_name, func.parameter.last().unwrap())?;
+                // delete the first parameter
+                func.parameter.pop();
+                let l = func.parameter.len();
+                if l == 0 {
+                    self.target = Some(func.target.as_ref().clone());
+                } else {
+                    
+                    self.target = Some(HoTType::TyFunc(func));
+                }
+                Ok(self)
+            },
+            _ => {Err("this target can not be introduced".to_string())}
+        }
+    }
 
     // construct new context for inductive type
 
@@ -140,7 +165,8 @@ impl Proof {
         
         // TODO: need to check the option. The term may not be in the term_set
         // note that we may use the term in a context
-        let t = self.search_term_helper(term_name)?;
+        let t = self.search_term_helper(term_name)
+        .map_err(|s| format!("Inductive: {}", s))?;
         let base = Rc::clone(&t);
         let res_term_tag = inductive_term(&base, inductive_name.iter().map(|s| s.1).collect());
 
@@ -205,7 +231,7 @@ impl Proof {
             Some(t) => {
                 let ty = t.get_type();
                 println!("compare type {:?}, target type: {:?}", ty, self.target_type());
-                if hottype::check_type(ty, self.assumption_list.last().unwrap()) {
+                if hottype::check_type(ty, self.target.as_ref().unwrap()) {
                     Ok(self)
                 } else {
                     Err("types do not match with the target".to_string())
@@ -225,7 +251,8 @@ impl Proof {
         // An annoying one, we need something lives longer than type_parameter
         let term_list = parameter.iter()
         .map(|&a| self.search_term_helper(a))
-        .collect::<Result<Vec<_>, _>>()?;
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|s| format!("Construct: {}",s))?;
 
         let type_parameter = term_list.iter()
         .map(|a| a.get_type())
@@ -257,7 +284,8 @@ impl Proof {
         .map(|&s| 
             self.search_term_helper(s)
         )
-        .collect::<Result<Vec<_>,_>>()?;
+        .collect::<Result<Vec<_>,_>>()
+        .map_err(|s| format!("Operate: {}", s))?;
         let res_type = kernel::apply_operator(op_kind, term_list)?;
 
         // I must copy the name here... It is troubling

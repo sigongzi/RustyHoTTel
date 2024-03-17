@@ -22,11 +22,13 @@ pub enum HoTType {
     // Pi type has two argument
     TyPi(Box<HoTType>, Box<HoTType>),
     // function has its name, and we think the argument is an stack, the last is a target 
-    TyFunc(String, Vec<Box<HoTType>>, Box<HoTType>),
+    TyFunc(Func),
     // the last must be a universe
     TyTypeFamily(String, Vec<Box<HoTType>>, Box<HoTType>),
     // similar as func
     TyLambda(Vec<Box<HoTType>>, Box<HoTType>),
+    TyZero,
+    TyOne,
     TyUniverse,
     // TODO: How to use a Natural?
     TyNat
@@ -38,6 +40,12 @@ pub struct Sum {
     pub inr : Box<HoTType>
 }
 
+#[derive(Clone, Debug)] 
+pub struct Func {
+    pub name : String,
+    pub parameter : Vec<Box<HoTType>>, // it is a stack
+    pub target : Box<HoTType>
+}
 
 struct Sigma {
     base : String,
@@ -59,7 +67,15 @@ pub fn check_type(type1 : &HoTType, type2 : &HoTType) -> bool {
         HoTType::TyPair(qa, qb)) => {
             check_type(&pa, &qa) &&
             check_type(&pb, &qb)
-        }
+        },
+        (HoTType::TyFunc(fa), HoTType::TyFunc(fb)) => {
+            fa.parameter.len() == fb.parameter.len() &&
+            fa.parameter.iter().zip(fb.parameter.iter()).all(|(a,b)|
+            check_type(a.as_ref(), b.as_ref())) &&
+            check_type(&fa.target, &fb.target)
+        },
+        (HoTType::TyZero, HoTType::TyZero) => true,
+        (HoTType::TyOne, HoTType::TyOne) => true,
         (_,_) => false
     }
 }
@@ -77,5 +93,13 @@ impl HoTType {
 
     pub fn mk_pair(left : &HoTType, right : &HoTType) -> HoTType {
         HoTType::TyPair(Box::new(left.clone()), Box::new(right.clone()))
+    }
+    pub fn mk_func(name : &str, func_parameter : Vec<&HoTType>, target : &HoTType) -> HoTType {
+        HoTType::TyFunc(Func {
+            name : name.to_string(),
+            // add parameter in the reversed order
+            parameter : func_parameter.iter().rev().map(|&s| Box::new(s.clone())).collect(),
+            target : Box::new(target.clone())
+        })
     }
 }
